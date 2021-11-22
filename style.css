@@ -1,0 +1,29 @@
+﻿#wrapper {
+	width: 660px;
+	/* height: 800px; */
+	position: absolute;
+	left: 50%;
+	/* top: 50%; */
+	margin: 0 0 0 -330px;
+}
+
+#contactText {
+	color:white; 
+	font-family:Arial, Helvetica, sans-serif; 
+	font-weight:normal; 
+	font-size:medium;
+}
+#text {
+	margin-left:10px;
+	margin-right:10px;
+}
+#emphasisText {
+	color:#EEEEEE;
+	font-family:Arial, Helvetica, sans-serif;
+	font-weight:normal;
+	font-size:small;
+}
+
+body {
+	background-color: #000000;
+}
