@@ -4,11 +4,13 @@ We'll take an additive approach to this - pulling in all data from any format of
 
 We also don't want to lose anything, so we'll be super noisy if there's any data that we don't understand, but quiet otherwise.
 """
+import collections
 import re
 from typing import Optional, Tuple
 import bs4
 import glob
 import os
+import unittest
 
 
 def clean_name(line_text, relation):
@@ -46,7 +48,7 @@ class PersonRef:
     self.file = ''
 
   def __repr__(self):
-    return f'{self.name}, {self.relation}, {self.link}'
+    return f'<{self.name}>'
 
   def to_dict(self):
     return {
@@ -156,10 +158,54 @@ def iter_people(lines):
 def iter_all_people():
   for path, lines in iter_files('../v1/individual/f?.htm'):
     for person in iter_people(lines):
-      person.file = path
+      person.file = os.path.basename(path)
       yield person
+
+def _frequencies(data):
+  results = collections.defaultdict(lambda: 0)
+  for data in data:
+    results[data] += 1
+  return results
+
+def _gendex_families():
+  with open('../v1/individual/gendex.txt', 'r') as gendex:
+    for line in gendex:
+      family = line.split('|')[0]
+      if not family:
+        continue
+      yield family
+
+
+def _diff_frequencies(a, b):
+  c = collections.defaultdict(lambda: 0, a)
+  for key, value in b.items():
+    c[key] -= value
+  return c
 
 if __name__ == '__main__':
   print('=' * 80)
-  print(list(iter_all_people()))
+
+class ExtractTests(unittest.TestCase):
+  def test_families_match_gendex(self):
+    read_families = [
+      f'{person.file}#{person.family}'
+      for person in iter_all_people()
+    ]
+
+    gendex_families = [
+      f'{person.file}#{person.family}'
+      for person in iter_all_people()
+    ]
+
+    read = _frequencies(read_families)
+    gendex = _frequencies(gendex_families)
+    self.assertEqual({k: v
+                      for k, v
+                      in _diff_frequencies(gendex, read).items()
+                      if v
+                      }, {})
+    self.assertEqual({k: v
+                      for k, v
+                      in _diff_frequencies(read, gendex).items()
+                      if v}, {})
 
