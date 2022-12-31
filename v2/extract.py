@@ -33,6 +33,7 @@ class PersonRef:
   link = ''
   name = ''
   relation = ''
+  family = ''
   content = []
 
   def __init__(self, relation: str, soup: bs4.BeautifulSoup):
@@ -40,6 +41,7 @@ class PersonRef:
     self.name = clean_name(soup.text, relation)
     self.relation = relation
     self.content = []
+    self.family = ''
 
   def __repr__(self):
     return f'{self.name}, {self.relation}, {self.link}'
@@ -49,6 +51,7 @@ class PersonRef:
         'link': self.link,
         'name': self.name,
         'relation': self.relation,
+        'family': self.family,
         'content': [c.to_dict() for c in self.content]
     }
 
@@ -85,9 +88,10 @@ class PersonContent:
     self.href = get_href(soup)
     data = text.split(':', 1)
     if len(data) == 2:
-      self.key, self.value = data
+      self.key = data[0].strip()
+      self.value = data[1].strip()
     elif data[0]:
-      self.value = data
+      self.value = data.strip()
 
   def __repr__(self):
     return f'{self.key}: {self.value} ({self.link})'
@@ -109,10 +113,25 @@ def read_person_content(line):
   return PersonContent(soup, text)
 
 
+def read_family_anchor(line):
+  soup = bs4.BeautifulSoup(line, 'html.parser')
+  if not (anchor := soup.find('a')):
+    return None
+  if not (name := anchor.attrs.get('name')):
+    return None
+  if not re.fullmatch(r'^f\d+', name):
+    print(f'Warning - skipping weird family anchor: {name}')
+    return None
+  return name
+
+
 def iter_people(lines):
   """Loop over person information in "f" file content, e.g. f10.htm."""
   current_ref = None
+  current_family = None
   for line in lines:
+    if family := read_family_anchor(line):
+      current_family = family
     if is_end_of_file(line):
       print('EOL', line)
       yield current_ref
@@ -122,6 +141,8 @@ def iter_people(lines):
       yield current_ref
     if ref:
       current_ref = ref
+      if current_family:
+        current_ref.family = current_family
       continue
     if not current_ref:
       continue
