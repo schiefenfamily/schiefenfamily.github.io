@@ -34,6 +34,7 @@ class PersonRef:
   name = ''
   relation = ''
   family = ''
+  file = ''
   content = []
 
   def __init__(self, relation: str, soup: bs4.BeautifulSoup):
@@ -42,6 +43,7 @@ class PersonRef:
     self.relation = relation
     self.content = []
     self.family = ''
+    self.file = ''
 
   def __repr__(self):
     return f'{self.name}, {self.relation}, {self.link}'
@@ -59,7 +61,10 @@ class PersonRef:
 def iter_files(pattern):
   for path in glob.glob(pattern):
     with open(path, 'r') as file:
-      yield path, file.readlines()
+      try:
+        yield path, file.readlines()
+      except Exception as e:
+        print(f'Unable to read: {path} ({e})')
 
 
 def read_start_of_person(line) -> Optional[PersonRef]:
@@ -91,11 +96,10 @@ class PersonContent:
       self.key = data[0].strip()
       self.value = data[1].strip()
     elif data[0]:
-      self.value = data.strip()
+      self.value = data[0].strip()
 
   def __repr__(self):
     return f'{self.key}: {self.value} ({self.link})'
-
 
   def to_dict(self):
     return {
@@ -133,8 +137,8 @@ def iter_people(lines):
     if family := read_family_anchor(line):
       current_family = family
     if is_end_of_file(line):
-      print('EOL', line)
-      yield current_ref
+      if current_ref:
+        yield current_ref
       break
     ref = read_start_of_person(line)
     if ref and current_ref:
@@ -149,7 +153,13 @@ def iter_people(lines):
     if line_content := read_person_content(line):
       current_ref.content.append(line_content)
 
+def iter_all_people():
+  for path, lines in iter_files('../v1/individual/f?.htm'):
+    for person in iter_people(lines):
+      person.file = path
+      yield person
 
 if __name__ == '__main__':
-  path, lines = next(iter_files('../v1/individual/f?.htm'))
-  print(path, next(iter_people(lines)).to_dict())
+  print('=' * 80)
+  print(list(iter_all_people()))
+
